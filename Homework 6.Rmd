@@ -8,10 +8,33 @@ output: github_document
 Analyzing homicide data in the United States. 
 
 ##Tidy Data and Create New Variables
+  * create a city_state variable (e.g. “Baltimore, MD”)
+  * create a binary variable indicating whether the homicide is solved
+  * omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these don’t report victim race  
+  * omit Tulsa, AL – this is a data entry mistake
+  * modifiy victim_race to have categories white and non-white, with white as the reference category
+  * be sure that victim_age is numeric.
 
-Create a city_state variable (e.g. “Baltimore, MD”), and a binary variable indicating whether the homicide is solved. Omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these don’t report victim race. Also omit Tulsa, AL – this is a data entry mistake. Modifiy victim_race to have categories white and  non-white, with white as the reference category. Be sure that victim_age is numeric.
+```{r message=FALSE}
+library(tidyverse)
+library(rvest)
+library(httr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+getwd()
 
-```{r}
+tidy = read_csv("./homicide-data.csv") %>%
+  filter(city != "Dallas", city != "Phoenix", city != "Kansas City") %>%
+  mutate(Tulsa_AL = (state == "AL" & city == "Tulsa")) %>%
+  filter(Tulsa_AL == FALSE) %>%
+  mutate(city_state = str_c(city, ", ", state),  #new var that combines city and state
+         solved = as.numeric(disposition == "Closed by arrest")) %>%  #new binary var for solved (with arrest)
+  mutate(victim_race = as.numeric(victim_race != "Other", victim_race != "Asian", victim_race != "Hispanic", victim_race != "Black")) %>%
+  mutate(victim_race = as.factor(victim_race)) %>%
+  mutate(rename(victim_race, "0"="white", "1"="non-white"))
+  #see if there's another way we learned to make these categories with reference value
+  mutate(victim_age = as.numeric(victim_age))
 ```
 
 ##Logistic Regression Model for Baltimore, Maryland
