@@ -22,39 +22,74 @@ library(httr)
 library(tidyr)
 library(stringr)
 library(dplyr)
+library(plyr)
 getwd()
 
 tidy = read_csv("./homicide-data.csv") %>%
   filter(city != "Dallas", city != "Phoenix", city != "Kansas City") %>%
   mutate(Tulsa_AL = (state == "AL" & city == "Tulsa")) %>%
   filter(Tulsa_AL == FALSE) %>%
-  mutate(city_state = str_c(city, ", ", state),  #new var that combines city and state
-         solved = as.numeric(disposition == "Closed by arrest")) %>%  #new binary var for solved (with arrest)
-  mutate(victim_race = as.numeric(victim_race != "Other", victim_race != "Asian", victim_race != "Hispanic", victim_race != "Black")) %>%
-  mutate(victim_race = as.factor(victim_race)) %>%
-  mutate(rename(victim_race, "0"="white", "1"="non-white"))
-  #see if there's another way we learned to make these categories with reference value
-  mutate(victim_age = as.numeric(victim_age))
+  filter(victim_age != 102, victim_age != 101) %>%
+  filter(victim_race != "Unknown") %>%
+  mutate(city_state = str_c(city, ", ", state),  #new var combines city and state
+         resolved = as.numeric(disposition == "Closed by arrest")) %>% #new binary var for resolved
+  mutate(victim_race = recode(victim_race,
+    `White` = "white",
+    `Black` = "non-white",
+    `Hispanic` = "non-white",
+    `Other` = "non-white",
+    `Asian` = "non-white")) %>%
+  mutate(victim_race = fct_relevel(victim_race, "white"))
 ```
+
 
 ##Logistic Regression Model for Baltimore, Maryland
 
-For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race (as just defined) as predictors. 
-
-Save the output of glm as an R object
-
-apply the  broom::tidy to this object
-
-obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed.
+  * For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs  unresolved as the outcome and victim age, sex and race (as just defined) as predictors. 
+  * Save the output of glm as an R object
+  * apply the  broom::tidy to this object
 
 ```{r}
+baltimore = tidy %>%
+  select(resolved, victim_age, victim_race, victim_sex)
+
+balt_fit_log = 
+  baltimore %>% 
+  glm(resolved ~ victim_age + victim_race + victim_sex, data = ., family = binomial()) 
+
+balt_fit_log %>% 
+  broom::tidy() %>% 
+  mutate(OR = exp(estimate)) %>%
+  select(term, log_OR = estimate, std.error, OR, p.value) %>% 
+  knitr::kable(digits = 3)
 ```
+
+Obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed.
+```{r}
+fit_log %>% 
+  broom::tidy() %>% 
+  mutate(OR = exp(estimate)) %>%
+  filter(term == "victim_racenon-white") %>%
+  select(term, log_OR = estimate, std.error, OR) %>% 
+  knitr::kable(digits = 3)
+```
+The log-transformed, adjusted OR is -0.513 with a confidence interval of (-0.542, -0.484). 
+
 
 ##Logistic Regression for Each City 
 
 run glm for each of the cities in your dataset and extract the adjusted odds ratio (and CI) for solving homicides comparing non-white victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and  unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
 
 ```{r}
+library(purrr)
+library(tidyverse)
+library(broom)
+
+all_city_prop = joined %>%
+  mutate(output = map2(.x = n.x, .y = n.y, ~prop.test(.x, .y) %>%
+                    broom::tidy(all_city_prop) %>%
+                    select(estimate, conf.high, conf.low))) %>%    
+                    unnest()
 ```
 
 ##Plot Estimated Odds Ratios and Confidence Intervals for Each City 
