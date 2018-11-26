@@ -125,6 +125,7 @@ Load and clean the data for regression analysis (i.e. convert numeric to factor 
 ```{r message=FALSE}
 p2_tidy = read_csv("./birthweight.csv") %>%
   janitor::clean_names() %>%
+  select(fincome, frace, mrace, blength, gaweeks, bhead, babysex) %>%
   filter(frace != "Unknown" | mrace != "Unknown") %>%
   mutate(babysex = as.factor(babysex), 
          malform = as.factor(malform), 
@@ -149,7 +150,7 @@ p2_tidy = read_csv("./birthweight.csv") %>%
 ##Birthweight Regression Models
 
 ###Model #1
-My proposed model uses father's race, mother's race, and father's income as predictors of birthweight
+My proposed model uses father's income as a predictor of birthweight
 
 Plot model residuals against fitted values (use  add_predictions and add_residuals)
 ```{r}
@@ -158,7 +159,7 @@ library(modelr)
 library(mgcv)
 
 
-mod_1 = mgcv::gam(glm(bwt ~ frace + mrace + fincome, data = p2_tidy)) %>%
+mod_1 = lm(bwt ~ fincome, data = p2_tidy)) 
   
 nonlin_mod = mgcv::gam(y ~ s(x), data = train_df)
 
