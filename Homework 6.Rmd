@@ -110,7 +110,6 @@ plot = all_city_OR %>%
   ggplot(aes(x = reorder(city_state, -log_OR), y = log_OR)) + geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) + geom_point() + labs(x = "Location", y = "log-transformed Odds Ratio", title = "The Odds of Solving Homicides for Non-White compared to White Victims by City, State") + theme(axis.text.x = element_text(angle = 90))
 plot
 
-
 ```
 
 
@@ -125,24 +124,14 @@ Load and clean the data for regression analysis (i.e. convert numeric to factor 
 ```{r message=FALSE}
 p2_tidy = read_csv("./birthweight.csv") %>%
   janitor::clean_names() %>%
-  select(fincome, bwt, frace, mrace, blength, gaweeks, bhead, babysex) %>%
+  select(fincome, bwt, blength, gaweeks, bhead, babysex) %>%
   filter(frace != "Unknown" | mrace != "Unknown") %>%
   mutate(babysex = as.factor(babysex), 
-         frace = as.factor(frace), 
+         frace = as.factor(frace),
+         gaweeks = as.numeric(gaweeks),
          mrace = as.factor(mrace)) %>%
   mutate(babysex = recode(babysex,`1` = "male",`2` = "female"), 
-         frace = recode(frace,
-              `White` = "white",
-              `Black` = "non-white",
-              `Asian` = "non-white",
-              `Puerto Rican` = "non-white",
-              `Other` = "non-white"),
-         mrace = recode(mrace,
-              `White` = "white",
-              `Black` = "non-white",
-              `Asian` = "non-white",
-              `Puerto Rican` = "non-white",
-              `Other` = "non-white"))
+        
 ```
 
 ##Birthweight Regression Models
@@ -156,17 +145,14 @@ library(tidyverse)
 library(modelr)
 library(mgcv)
 
-mod_1 = lm(bwt ~ fincome, data = p2_tidy) %>%
-  broom::tidy()
+mod_1 = lm(bwt ~ fincome, data = p2_tidy) 
+  broom::tidy() 
 
-mod_1_plot = p2_tidy %>%
-  add_predictions(mod_1) %>% 
-  add_residuals(mod_1) %>%
-  ggplot(aes(x = fincome, y = bwt)) + geom_point() + geom_line(aes(y = pred), color = "red") + geom_line(aes(y = resid), color = "blue")
-mod_1_plot
+p2_tidy %>%
+  modelr::add_residuals(p2_tidy, mod_1) %>%
+  modelr::add_predictions(p2_tidy, mod_1) %>% 
+  ggplot(p2_tidy, aes(x = fincome, y = bwt)) + geom_point() + geom_line(aes(y = pred), color = "red") + geom_line(aes(y = resid), color = "blue")
 
-
-mod_1_plot
 ```
 
 
@@ -174,6 +160,13 @@ mod_1_plot
 The second model using length at birth and gestational age as predictors (main effects only).
 
 ```{r}
+mod_2 = lm(bwt ~ blength + gaweeks, data = p2_tidy) %>%
+  broom::tidy() 
+
+modelr::add_residuals(p2_tidy, mod_2)
+  add_predictions(mod_2) 
+  ggplot(aes(x = , y = bwt)) + geom_point() + geom_line(aes(y = pred), color = "red") + geom_line(aes(y = resid), color = "blue")
+
 ```
 
 
@@ -181,6 +174,25 @@ The second model using length at birth and gestational age as predictors (main e
 The third model using head circumference, length, sex, and all interactions (including the three-way interaction) between these. 
 
 ```{r}
+mod_3 = lm(bwt ~ bhead + babysex + blength + bhead*babysex + bhead*blength + bhead*babysex*blength + blength*babysex, data = p2_tidy) %>%
+  broom::tidy() %>%
+  select(term, estimate, p.value) %>% 
+  knitr::kable(digits = 3)
+
+p2_tidy %>%
+  modelr::add_residuals(mod_3) %>%
+  modelr::add_predictions(mod_3) %>%
+  ggplot(aes(x = bwt, y = resid)) + geom_point() 
+
+
+
+p2_tidy %>% 
+  gather_predictions(lin_mod, nonlin_mod, wiggly_mod) %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_line(aes(y = pred), color = "red") + 
+  facet_wrap(~model)
 ```
 
 ###Compare Models #1 and #2
