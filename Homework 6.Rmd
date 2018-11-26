@@ -125,14 +125,12 @@ Load and clean the data for regression analysis (i.e. convert numeric to factor 
 ```{r message=FALSE}
 p2_tidy = read_csv("./birthweight.csv") %>%
   janitor::clean_names() %>%
-  select(fincome, frace, mrace, blength, gaweeks, bhead, babysex) %>%
+  select(fincome, bwt, frace, mrace, blength, gaweeks, bhead, babysex) %>%
   filter(frace != "Unknown" | mrace != "Unknown") %>%
   mutate(babysex = as.factor(babysex), 
-         malform = as.factor(malform), 
          frace = as.factor(frace), 
          mrace = as.factor(mrace)) %>%
   mutate(babysex = recode(babysex,`1` = "male",`2` = "female"), 
-         malform = recode(malform, `0` = "absent", `1` = "present"),
          frace = recode(frace,
               `White` = "white",
               `Black` = "non-white",
@@ -158,23 +156,17 @@ library(tidyverse)
 library(modelr)
 library(mgcv)
 
+mod_1 = lm(bwt ~ fincome, data = p2_tidy) %>%
+  broom::tidy()
 
-mod_1 = lm(bwt ~ fincome, data = p2_tidy)) 
-  
-nonlin_mod = mgcv::gam(y ~ s(x), data = train_df)
+mod_1_plot = p2_tidy %>%
+  add_predictions(mod_1) %>% 
+  add_residuals(mod_1) %>%
+  ggplot(aes(x = fincome, y = bwt)) + geom_point() + geom_line(aes(y = pred), color = "red") + geom_line(aes(y = resid), color = "blue")
+mod_1_plot
 
-pred = p2_tidy %>%
-  add_predictions(mod_1) %>%
-  ggplot(aes(x = x, y = y)) + geom_point() + 
-  geom_line(aes(y = pred), color = "red")
 
-  broom::tidy() %>%
-  mutate(OR = exp(estimate)) %>%
-  filter(term == "victim_racenon-white") %>%
-  select(term, log_OR = estimate, std.error, OR) %>%
-  mutate(conf.high = log_OR + std.error, conf.low = log_OR - std.error)
-  select(log_OR, conf.high, conf.low))) %>%    
-  unnest()
+mod_1_plot
 ```
 
 
