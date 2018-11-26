@@ -22,6 +22,7 @@ library(tidyr)
 library(stringr)
 library(dplyr)
 library(plyr)
+library(stats)
 getwd()
 
 tidy = read_csv("./homicide-data.csv") %>%
@@ -121,45 +122,84 @@ Understanding the effects of several variables on a child’s birthweight.
 
 Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).
 
-```{r}
+```{r message=FALSE}
+p2_tidy = read_csv("./birthweight.csv") %>%
+  janitor::clean_names() %>%
+  filter(frace != "Unknown" | mrace != "Unknown") %>%
+  mutate(babysex = as.factor(babysex), 
+         malform = as.factor(malform), 
+         frace = as.factor(frace), 
+         mrace = as.factor(mrace)) %>%
+  mutate(babysex = recode(babysex,`1` = "male",`2` = "female"), 
+         malform = recode(malform, `0` = "absent", `1` = "present"),
+         frace = recode(frace,
+              `White` = "white",
+              `Black` = "non-white",
+              `Asian` = "non-white",
+              `Puerto Rican` = "non-white",
+              `Other` = "non-white"),
+         mrace = recode(mrace,
+              `White` = "white",
+              `Black` = "non-white",
+              `Asian` = "non-white",
+              `Puerto Rican` = "non-white",
+              `Other` = "non-white"))
 ```
 
-##Birthweight Regression Model #1
+##Birthweight Regression Models
 
-Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. 
+###Model #1
+My proposed model uses father's race, mother's race, and father's income as predictors of birthweight
 
-Describe your modeling process. 
-
-Show a plot of model residuals against fitted values (use  add_predictions and add_residuals in making this plot).
-
+Plot model residuals against fitted values (use  add_predictions and add_residuals)
 ```{r}
+library(tidyverse)
+library(modelr)
+library(mgcv)
+
+
+mod_1 = mgcv::gam(glm(bwt ~ frace + mrace + fincome, data = p2_tidy)) %>%
+  
+nonlin_mod = mgcv::gam(y ~ s(x), data = train_df)
+
+pred = p2_tidy %>%
+  add_predictions(mod_1) %>%
+  ggplot(aes(x = x, y = y)) + geom_point() + 
+  geom_line(aes(y = pred), color = "red")
+
+  broom::tidy() %>%
+  mutate(OR = exp(estimate)) %>%
+  filter(term == "victim_racenon-white") %>%
+  select(term, log_OR = estimate, std.error, OR) %>%
+  mutate(conf.high = log_OR + std.error, conf.low = log_OR - std.error)
+  select(log_OR, conf.high, conf.low))) %>%    
+  unnest()
 ```
 
-##Compare Model #1 to Two Different Models
 
 ###Model #2
-Make a second model using length at birth and gestational age as predictors (main effects only).
+The second model using length at birth and gestational age as predictors (main effects only).
 
 ```{r}
 ```
 
-###Model #3
 
-Make a third model using head circumference, length, sex, and all interactions (including the three-way interaction) between these. 
+###Model #3
+The third model using head circumference, length, sex, and all interactions (including the three-way interaction) between these. 
 
 ```{r}
 ```
 
 ###Compare Models #1 and #2
 
-Make this comparison in terms of the cross-validated prediction error; use  crossv_mc and functions in purrr as appropriate.
+Compare in terms of the cross-validated prediction error (use crossv_mc and functions in purrr as appropriate).
 
 ```{r}
 ```
 
 ###Compare Models #1 and #3
 
-Make this comparison in terms of the cross-validated prediction error; use  crossv_mc and functions in purrr as appropriate.
+Compare in terms of the cross-validated prediction error (use crossv_mc and functions in purrr as appropriate).
 
 ```{r}
 ```
