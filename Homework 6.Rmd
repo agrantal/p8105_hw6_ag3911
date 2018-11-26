@@ -162,11 +162,6 @@ The second model using length at birth and gestational age as predictors (main e
 ```{r}
 mod_2 = lm(bwt ~ blength + gaweeks, data = p2_tidy) %>%
   broom::tidy() 
-
-modelr::add_residuals(p2_tidy, mod_2)
-  add_predictions(mod_2) 
-  ggplot(aes(x = , y = bwt)) + geom_point() + geom_line(aes(y = pred), color = "red") + geom_line(aes(y = resid), color = "blue")
-
 ```
 
 
@@ -175,9 +170,8 @@ The third model using head circumference, length, sex, and all interactions (inc
 
 ```{r}
 mod_3 = lm(bwt ~ bhead + babysex + blength + bhead*babysex + bhead*blength + bhead*babysex*blength + blength*babysex, data = p2_tidy) %>%
-  broom::tidy() %>%
-  select(term, estimate, p.value) %>% 
-  knitr::kable(digits = 3)
+  broom::tidy() 
+```
 
 p2_tidy %>%
   modelr::add_residuals(mod_3) %>%
@@ -200,6 +194,21 @@ p2_tidy %>%
 Compare in terms of the cross-validated prediction error (use crossv_mc and functions in purrr as appropriate).
 
 ```{r}
+cv = 
+  crossv_mc(p2_tidy, 100) %>%
+  mutate(mod_1 = map(train, ~lm(bwt ~ fincome, data = p2_tidy) ,
+         mod_2 = map(train, ~lm(bwt ~ blength + gaweeks, data = p2_tidy),
+  mutate(rmse_mod_1 = map2_dbl(mod_1, test, ~rmse(model = .x, data = .y)),
+         rmse_mod_2 = map2_dbl(mod_2, test, ~rmse(model = .x, data = .y))) 
+
+cv %>%
+  select(starts_with("rmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "rmse_", ""),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+
+
 ```
 
 ###Compare Models #1 and #3
@@ -207,5 +216,19 @@ Compare in terms of the cross-validated prediction error (use crossv_mc and func
 Compare in terms of the cross-validated prediction error (use crossv_mc and functions in purrr as appropriate).
 
 ```{r}
+cv = 
+  crossv_mc(p2_tidy, 100) %>%
+  mutate(mod_1 = map(train, ~lm(bwt ~ fincome, data = p2_tidy) ,
+         mod_3 = map(train, ~lm(bwt ~ bhead + babysex + blength + bhead*babysex + bhead*blength + bhead*babysex*blength + blength*babysex, data = p2_tidy))) %>% 
+  mutate(rmse_mod_1 = map2_dbl(mod_1, test, ~rmse(model = .x, data = .y)),
+         rmse_mod_3 = map2_dbl(mod_3, test, ~rmse(model = .x, data = .y)))
+
+cv %>%
+  select(starts_with("rmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "rmse_", ""),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+
 ```
 
