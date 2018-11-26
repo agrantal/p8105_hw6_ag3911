@@ -125,7 +125,6 @@ Load and clean the data for regression analysis (i.e. convert numeric to factor 
 p2_tidy = read_csv("./birthweight.csv") %>%
   janitor::clean_names() %>%
   select(fincome, bwt, blength, gaweeks, bhead, babysex) %>%
-  filter(frace != "Unknown" | mrace != "Unknown") %>%
   mutate(babysex = as.factor(babysex), 
          frace = as.factor(frace),
          gaweeks = as.numeric(gaweeks),
@@ -148,10 +147,11 @@ library(mgcv)
 mod_1 = lm(bwt ~ fincome, data = p2_tidy) 
   broom::tidy() 
 
-p2_tidy %>%
-  modelr::add_residuals(p2_tidy, mod_1) %>%
-  modelr::add_predictions(p2_tidy, mod_1) %>% 
-  ggplot(p2_tidy, aes(x = fincome, y = bwt)) + geom_point() + geom_line(aes(y = pred), color = "red") + geom_line(aes(y = resid), color = "blue")
+mod_1_plot = p2_tidy %>%
+  modelr::add_residuals(mod_1) %>%
+  modelr::add_predictions(mod_1) %>%
+  ggplot(aes(x = fincome, y = bwt)) + geom_point() + geom_line(aes(y = resid), color = "red") + geom_line(aes(y = pred), color = "blue")
+mod_1_plot
 
 ```
 
