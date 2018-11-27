@@ -7,13 +7,11 @@ output: github_document
 
 ## Tidy Data and Create New Variables
   * create a city_state variable (e.g. “Baltimore, MD”)
-  * create a binary variable indicating whether the homicide is solved. 
+  * create a binary variable indicating whether the homicide is solved
   * omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these don’t report victim race  
   * omit Tulsa, AL – this is a data entry mistake
   * modifiy victim_race to have categories white and non-white, with white as the reference category
   * be sure that victim_age is numeric.
-  
-I defined solved to be 
 ```{r message=FALSE, output=FALSE}
 library(tidyverse)
 library(rvest)
@@ -43,17 +41,23 @@ tidy = read_csv("./homicide-data.csv") %>%
                           #`Open/No arrest` = "unresolved",
                           #`Closed without arrest` = "unresolved"), 
          resolved = as.numeric(disposition == "Closed by arrest"),
-         victim_age = as.numeric(victim_age),
-         victim_race = ifelse(victim_race == "White", "white", "nonwhite")) %>%
-         #victim_race = relevel(victim_race, ref = "white"))
-         #victim_race = as.numeric(victim_race),
-         #resolved = as.numeric(resolved),
-         #victim_sex = as.numeric(as.factor(victim_sex))) %>%
+         victim_race = recode(victim_race,
+                          `White` = "white",
+                          `Black` = "nonwhite",
+                          `Hispanic` = "nonwhite",
+                          `Other` = "nonwhite",
+                          `Asian` = "nonwhite"), 
+         victim_race = relevel(victim_race, ref = "white"),
+         #victim_race = fct_relevel(victim_race, c("white", "nonwhite")),
+         victim_race = as.numeric(victim_race),
+         resolved = as.numeric(resolved),
+         victim_sex = as.numeric(as.factor(victim_sex))) %>%
   select(-city, -state, -Tulsa_AL, -disposition)
 
-#mutate(victim_race = as.numeric(victim_race == "non-white")) #white is 0, non-white is 1
+#mutate(victim_race = as.numeric(victim_race == "non-white")) #so white is 0, non-white is 1
 #after re-leveling a var, do i have also to convert it to numeric? 
 ```
+
 
 ## Logistic Regression Model for Baltimore, Maryland
   * For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs  unresolved as the outcome and victim age, sex and race (as just defined) as predictors. 
@@ -86,11 +90,10 @@ The adjusted odds ratio is 1.68 with a 95% confidence interval of (1.587, 1.780)
 
 Run glm for each of the cities in your dataset and extract the adjusted odds ratio (and CI) for solving homicides comparing non-white victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and  unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
 ```{r}
-all_city = tidy %>%
+all_city_OR = tidy %>%
   group_by(city_state) %>%
   nest() %>% 
-  mutate(output = map_df(data, ~glm(resolved ~ victim_age + victim_race + victim_sex, data = ., family = binomial())))
-,
+  mutate(output = map(data, ~glm(resolved ~ victim_age + victim_race + victim_sex, data = tidy, family = binomial())),
          output = map(data, broom::tidy), 
          select(-data))
 ```
@@ -105,8 +108,8 @@ plot = all_city_OR %>%
   #arrange(city_state, desc(estimate)) %>%
   ggplot(aes(x = reorder(city_state, -log_OR), y = log_OR)) + geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) + geom_point() + labs(x = "Location", y = "log-transformed Odds Ratio", title = "The Odds of Solving Homicides for Non-White compared to White Victims by City, State") + theme(axis.text.x = element_text(angle = 90))
 plot
+
 ```
-comment on the plot
 
 
 # Problem 2: Understanding the effects of several variables on a child’s birthweight. 
@@ -137,13 +140,11 @@ model_1 = lm(bwt ~ gaweeks, data = p2_tidy)
   broom::tidy() 
 ```
 
-Plot of model of residuals against fitted values using  add_predictions and add_residuals.
+Plot of model residuals against fitted values using  add_predictions and add_residuals. 
 ```{r}
 model_1_plot = p2_tidy %>%
   modelr::add_residuals(model_1) %>%
   modelr::add_predictions(model_1) %>%
-  ggplot(aes(x = pred, y = resid)) + geom_point()
-model_1_plot
   ggplot(aes(x = gaweeks, y = bwt)) + geom_point() + geom_line(aes(y = resid), color = "red") + geom_line(aes(y = pred), color = "blue") + labs(x = "gestational age (weeks)", y = "birthweight (grams)", title = "Gestational Age and Birthweight")
 model_1_plot
 ```
