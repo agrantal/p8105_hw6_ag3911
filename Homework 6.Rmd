@@ -7,13 +7,13 @@ output: github_document
 
 ## Tidy Data and Create New Variables
   * create a city_state variable (e.g. “Baltimore, MD”)
-  * create a binary variable indicating whether the homicide is solved. 
+  * create a binary variable indicating whether the homicide is resolved. 
   * omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these don’t report victim race  
   * omit Tulsa, AL – this is a data entry mistake
   * modifiy victim_race to have categories white and non-white, with white as the reference category
   * be sure that victim_age is numeric.
   
-I defined solved to be 
+I defined resolved as closed with arrest. 
 ```{r message=FALSE, output=FALSE}
 library(tidyverse)
 library(rvest)
@@ -89,10 +89,10 @@ Run glm for each of the cities in your dataset and extract the adjusted odds rat
 all_city = tidy %>%
   group_by(city_state) %>%
   nest() %>% 
-  mutate(output = map_df(data, ~glm(resolved ~ victim_age + victim_race + victim_sex, data = ., family = binomial())))
-,
-         output = map(data, broom::tidy), 
-         select(-data))
+  filter(city_state == "Baltimore, MD") %>%
+  mutate(output = map(data, ~glm(resolved ~ victim_age + victim_race + victim_sex, data = tidy, family = binomial())), 
+         output = map(output, broom::tidy)) %>%
+  select(-data)
 ```
 
 ## Plot Estimated Odds Ratios and Confidence Intervals for Each City 
