@@ -37,22 +37,14 @@ tidy = read_csv("./homicide-data.csv") %>%
   filter(victim_age != 102, victim_age != 101) %>%
   filter(victim_race != "Unknown" | victim_race == "NA") %>%
   filter(victim_age != "Unknown", victim_sex != "Unknown") %>%
-  mutate(city_state = str_c(city, ", ", state),  #new var combines city and state
-         #resolved = recode(disposition, 
-                          #`Closed by arrest` = "resolved",
-                          #`Open/No arrest` = "unresolved",
-                          #`Closed without arrest` = "unresolved"), 
+  mutate(city_state = str_c(city, ", ", state),  
          resolved = as.numeric(disposition == "Closed by arrest"),
-         victim_age = as.numeric(victim_age),
-         victim_race = ifelse(victim_race == "White", "white", "nonwhite")) %>%
-         #victim_race = relevel(victim_race, ref = "white"))
-         #victim_race = as.numeric(victim_race),
-         #resolved = as.numeric(resolved),
-         #victim_sex = as.numeric(as.factor(victim_sex))) %>%
+         age = as.numeric(victim_age),
+         victim_race = ifelse(victim_race == "White", "white", "nonwhite"), 
+         race = factor(victim_race),
+         sex = factor(victim_sex), 
+         race2 = relevel(race, ref = "white")) %>%  
   select(-city, -state, -Tulsa_AL, -disposition)
-
-#mutate(victim_race = as.numeric(victim_race == "non-white")) #white is 0, non-white is 1
-#after re-leveling a var, do i have also to convert it to numeric? 
 ```
 
 ## Logistic Regression Model for Baltimore, Maryland
@@ -61,11 +53,11 @@ tidy = read_csv("./homicide-data.csv") %>%
   * apply the  broom::tidy to this object
 ```{r output=FALSE}
 baltimore = tidy %>%
-  select(resolved, victim_age, victim_race, victim_sex)
+  select(resolved, age, race2, sex)
 
 balt_fit = 
   baltimore %>% 
-  glm(resolved ~ victim_age + victim_race + victim_sex, data = ., family = binomial())
+  glm(resolved ~ age + race2 + sex, data = ., family = binomial())
 ```
 
 Obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed.
@@ -73,13 +65,13 @@ Obtain the estimate and confidence interval of the adjusted odds ratio for solvi
 balt_fit %>%  
   broom::tidy() %>% 
   mutate(OR = exp(estimate)) %>%
-  filter(term == "victim_racewhite") %>%   #for some reason victim_racenonwhite isn't showing up, i might have made a mistake making nonwhite as the reference instead of white 
+  filter(term == "race2nonwhite") %>%   
   select(term, log_OR = estimate, std.error, OR) %>% 
   mutate(conf.high = exp(log_OR + 1.96*std.error),  
          conf.low = exp(log_OR - 1.96*std.error)) %>%
   knitr::kable(digits = 3)
 ```
-The adjusted odds ratio is 1.68 with a 95% confidence interval of (1.587, 1.780). 
+The adjusted odds ratio is 0.562 with a 95% confidence interval of (0.531, 0.595). 
 
 
 ## Logistic Regression for Each City 
@@ -89,22 +81,29 @@ Run glm for each of the cities in your dataset and extract the adjusted odds rat
 all_city = tidy %>%
   group_by(city_state) %>%
   nest() %>% 
-  filter(city_state == "Baltimore, MD") %>%
-  mutate(output = map(data, ~glm(resolved ~ victim_age + victim_race + victim_sex, data = tidy, family = binomial())), 
+  mutate(output = map(data, ~glm(resolved ~ age + race2 + sex, data = tidy, family = binomial())), 
          output = map(output, broom::tidy)) %>%
-  select(-data)
+  select(-data) %>%
+  unnest()
 ```
 
 ## Plot Estimated Odds Ratios and Confidence Intervals for Each City 
 
 Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
 ```{r}
-plot = all_city_OR %>%
+all_city %>% 
+  mutate(term = fct_inorder(term)) %>% 
+  spread(key = term, value = estimate) %>% 
+  select(city_state, term, log_OR = estimate, std.error) %>% 
+  mutate(OR = exp(log_OR)) %>%
+  filter(term == "race2nonwhite") %>%   
+  mutate(conf.high = exp(log_OR + 1.96*std.error),  
+         conf.low = exp(log_OR - 1.96*std.error)) %>%
+  knitr::kable(digits = 3)
+
+manhattan_nest_lm_res %>% 
   group_by(city_state) %>%
-  #mutate(estimate = as.numeric(estimate)) %>%
-  #arrange(city_state, desc(estimate)) %>%
-  ggplot(aes(x = reorder(city_state, -log_OR), y = log_OR)) + geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) + geom_point() + labs(x = "Location", y = "log-transformed Odds Ratio", title = "The Odds of Solving Homicides for Non-White compared to White Victims by City, State") + theme(axis.text.x = element_text(angle = 90))
-plot
+  ggplot(aes(x = reorder(city_state, -OR), y = OR)) + + geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) + geom_point() + labs(x = "Location", y = "log-transformed Odds Ratio", title = "The Odds of Solving Homicides for Non-White compared to White Victims by City, State") + theme(axis.text.x = element_text(angle = 90))
 ```
 comment on the plot
 
@@ -143,8 +142,6 @@ model_1_plot = p2_tidy %>%
   modelr::add_residuals(model_1) %>%
   modelr::add_predictions(model_1) %>%
   ggplot(aes(x = pred, y = resid)) + geom_point()
-model_1_plot
-  ggplot(aes(x = gaweeks, y = bwt)) + geom_point() + geom_line(aes(y = resid), color = "red") + geom_line(aes(y = pred), color = "blue") + labs(x = "gestational age (weeks)", y = "birthweight (grams)", title = "Gestational Age and Birthweight")
 model_1_plot
 ```
 Model #1 shows a positive relationship between gestational age and birthweight. There is little data on gestational age earlier than 30 weeks, which makes sense because babies delivered at that time would be extremely underdeveloped. The residual is fairly randomly dispersed along the horixontal axis, indicating that this model is a decent fit for the data.   
