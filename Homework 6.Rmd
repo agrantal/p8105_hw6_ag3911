@@ -79,35 +79,31 @@ The adjusted odds ratio is 0.562 with a 95% confidence interval of (0.531, 0.595
 
 Run glm for each of the cities in your dataset and extract the adjusted odds ratio (and CI) for solving homicides comparing non-white victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and  unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
 ```{r}
-#all_city = tidy %>%
-  #group_by(city_state) %>%
-  #nest() %>% 
-  #mutate(output = map(data, ~glm(resolved ~ age + race2 + sex, data = tidy, family = #binomial())), 
-         #output = map(output, broom::tidy)) %>%
-  #select(-data) %>%
-  #unnest()
+all_city = tidy %>%
+  group_by(city_state) %>%
+  nest() %>% 
+  mutate(output = map(data, ~glm(resolved ~ age + race2 + sex, data = .x, family = binomial()))) %>%
+  mutate(output = map(output, broom::tidy)) %>%
+  select(-data) %>%
+  unnest()
 ```
 
 ## Plot Estimated Odds Ratios and Confidence Intervals for Each City 
 
 Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
 ```{r}
-#all_city %>% 
+all_city %>% 
   #mutate(term = fct_inorder(term)) %>% 
   #spread(key = term, value = estimate) %>% 
-  #select(city_state, term, log_OR = estimate, std.error) %>% 
-  #mutate(OR = exp(log_OR)) %>%
-  #filter(term == "race2nonwhite") %>%   
-  #mutate(conf.high = exp(log_OR + 1.96*std.error),  
-         #conf.low = exp(log_OR - 1.96*std.error)) %>%
-  #knitr::kable(digits = 3)
-
-#manhattan_nest_lm_res %>% 
-  #group_by(city_state) %>%
-  #ggplot(aes(x = reorder(city_state, -OR), y = OR)) + + geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) + geom_point() + labs(x = "Location", y = "log-transformed Odds Ratio", title = "The Odds of Solving Homicides for Non-White compared to White Victims by City, State") + theme(axis.text.x = element_text(angle = 90))
+  select(city_state, term, log_OR = estimate, std.error) %>% 
+  mutate(OR = exp(log_OR)) %>%
+  filter(term == "race2nonwhite") %>%   
+  mutate(conf_high = exp(log_OR + (1.96*std.error))) %>%
+  mutate(conf_low = exp(log_OR - (1.96*std.error))) %>%
+  group_by(city_state) %>%
+  ggplot(aes(x = reorder(city_state, -OR), y = OR)) + geom_errorbar(aes(ymin = conf_low, ymax = conf_high)) + geom_point() + labs(x = "Location", y = "Odds Ratio", title = "Homicides Solved for Non-White versus White Victims by City") + theme(axis.text.x = element_text(angle = 90))
 ```
-I cannot comment on the plot because I do not know what it looks like. 
-
+In Tampa, Florida and Birmingham, Alabama being non-white has a slightly positive impact on the likelihood that a homicide will be solved. In most cities and in Boston, Massachussetts, in particular, being non-white has the greatest negative impact on the likelihood that a homicide will be solved. Also, the confidence intervals are much wider near an OR = 1 than near an OR = 0.  
 
 # Problem 2: Understanding the effects of several variables on a child’s birthweight. 
 
