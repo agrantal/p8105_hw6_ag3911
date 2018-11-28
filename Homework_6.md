@@ -1,20 +1,23 @@
----
-title: "Homework 6, Amelia Grant-Alfieri, ag3911"
-output: github_document
----
+Homework 6, Amelia Grant-Alfieri, ag3911
+================
 
-# Problem 1: Analyzing homicide data in the United States. 
+# Problem 1: Analyzing homicide data in the United States.
 
 ## Tidy Data and Create New Variables
-  * create a city_state variable (e.g. “Baltimore, MD”)
-  * create a binary variable indicating whether the homicide is resolved. 
-  * omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these don’t report victim race  
-  * omit Tulsa, AL – this is a data entry mistake
-  * modifiy victim_race to have categories white and non-white, with white as the reference category
-  * be sure that victim_age is numeric.
-  
-I defined resolved as "closed by arrest". 
-```{r message=FALSE, output=FALSE}
+
+  - create a city\_state variable (e.g. “Baltimore, MD”)
+  - create a binary variable indicating whether the homicide is
+    resolved.
+  - omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these
+    don’t report victim race  
+  - omit Tulsa, AL – this is a data entry mistake
+  - modifiy victim\_race to have categories white and non-white, with
+    white as the reference category
+  - be sure that victim\_age is numeric.
+
+I defined resolved as “closed by arrest”.
+
+``` r
 library(tidyverse)
 library(rvest)
 library(httr)
@@ -28,7 +31,11 @@ library(purrr)
 library(broom)
 library(ggplot2)
 getwd()
+```
 
+    ## [1] "/Users/ameliaga/Documents/MPH Sem 3/Data Science/p8105_hw6_ag3911/Homework 6"
+
+``` r
 tidy = read_csv("./homicide-data.csv") %>%
   select(victim_age, victim_race, victim_race, victim_age, victim_sex, city, state, disposition) %>%
   filter(city != "Dallas", city != "Phoenix", city != "Kansas City") %>%
@@ -48,10 +55,16 @@ tidy = read_csv("./homicide-data.csv") %>%
 ```
 
 ## Logistic Regression Model for Baltimore, Maryland
-  * For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs  unresolved as the outcome and victim age, sex and race (as just defined) as predictors. 
-  * Save the output of glm as an R object
-  * apply the  broom::tidy to this object
-```{r output=FALSE}
+
+  - For the city of Baltimore, MD, use the glm function to fit a
+    logistic regression with resolved vs unresolved as the outcome and
+    victim age, sex and race (as just defined) as predictors.
+  - Save the output of glm as an R object
+  - apply the broom::tidy to this object
+
+<!-- end list -->
+
+``` r
 baltimore = tidy %>%
   select(resolved, age, race2, sex)
 
@@ -60,8 +73,11 @@ balt_fit =
   glm(resolved ~ age + race2 + sex, data = ., family = binomial())
 ```
 
-Obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed.
-```{r} 
+Obtain the estimate and confidence interval of the adjusted odds ratio
+for solving homicides comparing non-white victims to white victims
+keeping all other variables fixed.
+
+``` r
 balt_fit %>%  
   broom::tidy() %>% 
   mutate(OR = exp(estimate)) %>%
@@ -72,13 +88,22 @@ balt_fit %>%
   knitr::kable(digits = 3)
 ```
 
-The adjusted odds ratio is 0.562 with a 95% confidence interval of (0.531, 0.595). 
+| term          | log\_OR | std.error |    OR | conf.high | conf.low |
+| :------------ | ------: | --------: | ----: | --------: | -------: |
+| race2nonwhite | \-0.576 |     0.029 | 0.562 |     0.595 |    0.531 |
 
+The adjusted odds ratio is 0.562 with a 95% confidence interval of
+(0.531, 0.595).
 
-## Logistic Regression for Each City 
+## Logistic Regression for Each City
 
-Run glm for each of the cities in your dataset and extract the adjusted odds ratio (and CI) for solving homicides comparing non-white victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and  unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
-```{r}
+Run glm for each of the cities in your dataset and extract the adjusted
+odds ratio (and CI) for solving homicides comparing non-white victims to
+white victims. Do this within a “tidy” pipeline, making use of
+purrr::map, list columns, and unnest as necessary to create a dataframe
+with estimated ORs and CIs for each city.
+
+``` r
 #all_city = tidy %>%
   #group_by(city_state) %>%
   #nest() %>% 
@@ -88,10 +113,12 @@ Run glm for each of the cities in your dataset and extract the adjusted odds rat
   #unnest()
 ```
 
-## Plot Estimated Odds Ratios and Confidence Intervals for Each City 
+## Plot Estimated Odds Ratios and Confidence Intervals for Each City
 
-Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
-```{r}
+Create a plot that shows the estimated ORs and CIs for each city.
+Organize cities according to estimated OR, and comment on the plot.
+
+``` r
 #all_city %>% 
   #mutate(term = fct_inorder(term)) %>% 
   #spread(key = term, value = estimate) %>% 
@@ -106,15 +133,18 @@ Create a plot that shows the estimated ORs and CIs for each city. Organize citie
   #group_by(city_state) %>%
   #ggplot(aes(x = reorder(city_state, -OR), y = OR)) + + geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) + geom_point() + labs(x = "Location", y = "log-transformed Odds Ratio", title = "The Odds of Solving Homicides for Non-White compared to White Victims by City, State") + theme(axis.text.x = element_text(angle = 90))
 ```
-I cannot comment on the plot because I do not know what it looks like. 
 
+I cannot comment on the plot because I do not know what it looks
+like.
 
-# Problem 2: Understanding the effects of several variables on a child’s birthweight. 
+# Problem 2: Understanding the effects of several variables on a child’s birthweight.
 
 ## Load and Tidy Data
 
-Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).
-```{r message=FALSE}
+Load and clean the data for regression analysis (i.e. convert numeric to
+factor where appropriate, check for missing data, etc.).
+
+``` r
 p2_tidy = read_csv("./birthweight.csv") %>%
   janitor::clean_names() %>%
   select(bwt, blength, gaweeks, bhead, babysex) %>%
@@ -125,10 +155,15 @@ p2_tidy = read_csv("./birthweight.csv") %>%
 
 ## Birthweight Regression Models
 
-### Model #1
+### Model \#1
 
-My proposed model uses gestational age (in weeks) as a predictor of birthweight. In general, premature babies, those with a younger gestational age in utero, weigh less than full-term babies. This relationship is supported biologically by the rapid growth and weight gain a fetus is supposed to undergo during the final trimester in utero. 
-```{r message=FALSE, warning=FALSE, output=FALSE}
+My proposed model uses gestational age (in weeks) as a predictor of
+birthweight. In general, premature babies, those with a younger
+gestational age in utero, weigh less than full-term babies. This
+relationship is supported biologically by the rapid growth and weight
+gain a fetus is supposed to undergo during the final trimester in utero.
+
+``` r
 library(tidyverse)
 library(modelr)
 library(mgcv)
@@ -137,8 +172,12 @@ model_1 = lm(bwt ~ gaweeks, data = p2_tidy)
   broom::tidy() 
 ```
 
-Plot of model of residuals against fitted values using  add_predictions and add_residuals.
-```{r}
+    ## # A tibble: 0 x 0
+
+Plot of model of residuals against fitted values using add\_predictions
+and add\_residuals.
+
+``` r
 model_1_plot = p2_tidy %>%
   modelr::add_residuals(model_1) %>%
   modelr::add_predictions(model_1) %>%
@@ -146,28 +185,42 @@ model_1_plot = p2_tidy %>%
 model_1_plot
 ```
 
-Model #1 shows a positive relationship between gestational age and birthweight. There is little data on gestational age earlier than 30 weeks, which makes sense because babies delivered at that time would be extremely underdeveloped. The residual is fairly randomly dispersed along the horixontal axis, indicating that this model is a decent fit for the data.   
+![](Homework_6_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
-### Model #2
+Model \#1 shows a positive relationship between gestational age and
+birthweight. There is little data on gestational age earlier than 30
+weeks, which makes sense because babies delivered at that time would be
+extremely underdeveloped. The residual is fairly randomly dispersed
+along the horixontal axis, indicating that this model is a decent fit
+for the data.
 
-The second model uses length at birth and gestational age as predictors (main effects only) of birthweight. 
-```{r}
+### Model \#2
+
+The second model uses length at birth and gestational age as predictors
+(main effects only) of birthweight.
+
+``` r
 model_2 = lm(bwt ~ blength + gaweeks, data = p2_tidy) %>%
   broom::tidy() 
 ```
 
-### Model #3
+### Model \#3
 
-The third model uses head circumference, length, sex, and all interactions (including the three-way interaction) as predictors of birthweight. 
-```{r}
+The third model uses head circumference, length, sex, and all
+interactions (including the three-way interaction) as predictors of
+birthweight.
+
+``` r
 model_3 = lm(bwt ~ bhead + babysex + blength + bhead*babysex + bhead*blength + bhead*babysex*blength + blength*babysex, data = p2_tidy) %>%
   broom::tidy() 
 ```
 
-### Compare Models #1 and #2
+### Compare Models \#1 and \#2
 
-Compare in terms of the cross-validated prediction error (use crossv_mc and functions in purrr as appropriate).
-```{r}
+Compare in terms of the cross-validated prediction error (use crossv\_mc
+and functions in purrr as appropriate).
+
+``` r
 cv_12 = crossv_mc(p2_tidy, 100) %>%
   mutate(model_1 = map(train, ~lm(bwt ~ gaweeks, data = p2_tidy)),
          model_2 = map(train, ~lm(bwt ~ blength + gaweeks, data = p2_tidy))) %>%
@@ -182,12 +235,17 @@ cv_12 %>%
   ggplot(aes(x = model, y = rmse)) + geom_violin() + labs(y = "Root Mean Squared Errors (RMSE)", x = "Model", title = "Model 1 and 2 Comparison")
 ```
 
-Model #2 appears to be a better fit for the data because it has a smaller RMSE than Model #1. 
+![](Homework_6_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
-### Compare Models #1 and #3
+Model \#2 appears to be a better fit for the data because it has a
+smaller RMSE than Model \#1.
 
-Compare in terms of the cross-validated prediction error (use crossv_mc and functions in purrr as appropriate).
-```{r}
+### Compare Models \#1 and \#3
+
+Compare in terms of the cross-validated prediction error (use crossv\_mc
+and functions in purrr as appropriate).
+
+``` r
 cv_13 = crossv_mc(p2_tidy, 100) %>%
   mutate(model_1 = map(train, ~lm(bwt ~ gaweeks, data = p2_tidy)),
          model_3 = map(train, ~lm(bwt ~ bhead + babysex + blength + bhead*babysex + bhead*blength + bhead*babysex*blength + blength*babysex, data = p2_tidy))) %>% 
@@ -202,4 +260,7 @@ cv_13 %>%
   ggplot(aes(x = model, y = rmse)) + geom_violin() + labs(y = "Root Mean Squared Errors (RMSE)", x = "Model", title = "Model 1 and 3 Comparison")
 ```
 
-Model #3 appears to be a better fit for the data because it has a smaller RMSE than Model #1. 
+![](Homework_6_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+Model \#3 appears to be a better fit for the data because it has a
+smaller RMSE than Model \#1.
