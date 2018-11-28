@@ -105,7 +105,7 @@ manhattan_nest_lm_res %>%
   group_by(city_state) %>%
   ggplot(aes(x = reorder(city_state, -OR), y = OR)) + + geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) + geom_point() + labs(x = "Location", y = "log-transformed Odds Ratio", title = "The Odds of Solving Homicides for Non-White compared to White Victims by City, State") + theme(axis.text.x = element_text(angle = 90))
 ```
-comment on the plot
+I cannot comment on the plot because I do not know what it looks like. 
 
 
 # Problem 2: Understanding the effects of several variables on a child’s birthweight. 
