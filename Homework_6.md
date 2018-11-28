@@ -181,7 +181,7 @@ and add\_residuals.
 model_1_plot = p2_tidy %>%
   modelr::add_residuals(model_1) %>%
   modelr::add_predictions(model_1) %>%
-  ggplot(aes(x = pred, y = resid)) + geom_point()
+  ggplot(aes(x = pred, y = resid)) + geom_point() + labs(x = "predicted values", y = "residuals", title = "Predicted and Residual Values for a Model of Gestational Age and Birthweight")
 model_1_plot
 ```
 
